@@ -40,7 +40,12 @@ Una aplicación web completa de e-commerce construida con Next.js, que incluye i
    - Obtén tu Access Token desde el panel de desarrolladores
    - Configura las URLs de retorno en tu aplicación
 
-6. **Ejecutar en desarrollo**
+6. **Configurar PayPal**
+   - Crea una cuenta en [PayPal Developer](https://developer.paypal.com/)
+   - Crea una aplicación en el Developer Dashboard
+   - Obtén tu Client ID para el entorno de sandbox o producción
+
+7. **Ejecutar en desarrollo**
    ```bash
    npm run dev
    ```
@@ -58,6 +63,9 @@ GOOGLE_SHEET_RANGE=A2:F
 
 # Mercado Pago
 MERCADO_PAGO_ACCESS_TOKEN=tu-mercadopago-access-token
+
+# PayPal
+NEXT_PUBLIC_PAYPAL_CLIENT_ID=tu-paypal-client-id
 
 # Configuración de la App
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
@@ -106,13 +114,21 @@ src/
 - ✅ Cálculo automático del total
 - ✅ Integración con Mercado Pago
 
-## 💳 Integración con Mercado Pago
+## 💳 Integración de Pagos
 
+### Mercado Pago
 La aplicación utiliza el Checkout Pro de Mercado Pago:
 
 1. **Creación de Preferencia**: Se crea una preferencia de pago con los items del carrito
 2. **Redirección**: El usuario es redirigido al checkout de Mercado Pago
 3. **Retorno**: Después del pago, el usuario regresa a la aplicación
+
+### PayPal
+Integración con PayPal Checkout:
+
+1. **Selección de Método**: El usuario puede elegir entre Mercado Pago y PayPal
+2. **Botón de PayPal**: Integración directa con el SDK de PayPal
+3. **Procesamiento**: Pago seguro a través de la plataforma de PayPal
 
 ## 🎨 Tecnologías Utilizadas
 
@@ -122,6 +138,7 @@ La aplicación utiliza el Checkout Pro de Mercado Pago:
 - **Zustand** - Gestión de estado
 - **Google Sheets API** - Gestión de productos
 - **Mercado Pago SDK** - Procesamiento de pagos
+- **PayPal React SDK** - Integración con PayPal
 - **Lucide React** - Iconos
 
 ## 📱 Características Responsivas

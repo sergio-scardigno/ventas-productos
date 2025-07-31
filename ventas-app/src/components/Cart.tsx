@@ -3,15 +3,21 @@
 import { useState } from 'react';
 import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/lib/utils';
+import { PaymentMethod } from '@/types';
 import { ShoppingCart, X, Plus, Minus, Trash2 } from 'lucide-react';
+import PaymentMethodSelector from './PaymentMethodSelector';
+import PayPalButton from './PayPalButton';
 
 export default function Cart() {
   const { items, total, removeItem, updateQuantity, clearCart } = useCartStore();
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('mercadopago');
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleCheckout = async () => {
+  const handleMercadoPagoCheckout = async () => {
     if (items.length === 0) return;
 
+    setIsProcessing(true);
     try {
       const response = await fetch('/api/create-preference', {
         method: 'POST',
@@ -30,7 +36,20 @@ export default function Cart() {
     } catch (error) {
       console.error('Error en checkout:', error);
       alert('Error al procesar el pago. Inténtalo de nuevo.');
+    } finally {
+      setIsProcessing(false);
     }
+  };
+
+  const handlePayPalSuccess = (orderId: string) => {
+    alert(`¡Pago exitoso! ID de orden: ${orderId}`);
+    clearCart();
+    setIsOpen(false);
+  };
+
+  const handlePayPalError = (error: any) => {
+    console.error('Error en PayPal:', error);
+    alert('Error al procesar el pago con PayPal. Inténtalo de nuevo.');
   };
 
   return (
@@ -51,7 +70,7 @@ export default function Cart() {
       {/* Modal del carrito */}
       {isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="text-xl font-semibold">Carrito de Compras</h2>
               <button
@@ -118,14 +137,32 @@ export default function Cart() {
                     {formatPrice(total)}
                   </span>
                 </div>
-                
-                <div className="space-y-2">
-                  <button
-                    onClick={handleCheckout}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200"
-                  >
-                    Proceder al Pago
-                  </button>
+
+                {/* Selector de método de pago */}
+                <PaymentMethodSelector
+                  selectedMethod={selectedMethod}
+                  onMethodChange={setSelectedMethod}
+                />
+
+                {/* Botones de pago */}
+                <div className="space-y-3 mt-4">
+                  {selectedMethod === 'mercadopago' ? (
+                    <button
+                      onClick={handleMercadoPagoCheckout}
+                      disabled={isProcessing}
+                      className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200"
+                    >
+                      {isProcessing ? 'Procesando...' : 'Pagar con Mercado Pago'}
+                    </button>
+                  ) : (
+                    <PayPalButton
+                      items={items}
+                      total={total}
+                      onSuccess={handlePayPalSuccess}
+                      onError={handlePayPalError}
+                    />
+                  )}
+                  
                   <button
                     onClick={clearCart}
                     className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
