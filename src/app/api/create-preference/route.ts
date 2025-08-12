@@ -2,13 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { CartItem } from '@/types';
 
-// Configurar Mercado Pago
-const client = new MercadoPagoConfig({ 
-  accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN! 
-});
-
 export async function POST(request: NextRequest) {
   try {
+    // Verificar que existe el token de acceso
+    if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+      console.error('MERCADO_PAGO_ACCESS_TOKEN no está configurado');
+      return NextResponse.json(
+        { error: 'Configuración de Mercado Pago incompleta' },
+        { status: 500 }
+      );
+    }
+
+    // Configurar Mercado Pago
+    const client = new MercadoPagoConfig({ 
+      accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN 
+    });
+    
     const { items }: { items: CartItem[] } = await request.json();
 
     if (!items || items.length === 0) {
@@ -17,6 +26,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Verificar que existe la URL base
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
     // Crear preferencia de pago
     const preference = {
@@ -29,13 +41,14 @@ export async function POST(request: NextRequest) {
         description: item.product.description,
       })),
       back_urls: {
-        success: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
-        failure: `${process.env.NEXT_PUBLIC_BASE_URL}/failure`,
-        pending: `${process.env.NEXT_PUBLIC_BASE_URL}/pending`,
+        success: `${baseUrl}/success`,
+        failure: `${baseUrl}/failure`,
+        pending: `${baseUrl}/pending`,
       },
-      auto_return: 'approved',
+      notification_url: `${baseUrl}/api/webhooks/mercadopago`,
       external_reference: `order-${Date.now()}`,
-      notification_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhook`,
+      expires: true,
+      expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 horas
     };
 
     const preferenceClient = new Preference(client);

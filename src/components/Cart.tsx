@@ -31,8 +31,8 @@ export default function Cart() {
         throw new Error('Error al crear la preferencia de pago');
       }
 
-      const { init_point } = await response.json();
-      window.location.href = init_point;
+      const { sandbox_init_point } = await response.json();
+      window.location.href = sandbox_init_point;
     } catch (error) {
       console.error('Error en checkout:', error);
       alert('Error al procesar el pago. Inténtalo de nuevo.');
