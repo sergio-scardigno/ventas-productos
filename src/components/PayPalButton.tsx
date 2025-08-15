@@ -40,11 +40,16 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
 
   useEffect(() => {
     // Verificar que existe el Client ID de PayPal
+    console.log('🔍 Verificando NEXT_PUBLIC_PAYPAL_CLIENT_ID...');
+    console.log('🔍 Valor:', process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? 'Configurado' : 'No configurado');
+    
     if (!process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID) {
       console.error('❌ NEXT_PUBLIC_PAYPAL_CLIENT_ID no está configurado');
       onError(new Error('Configuración de PayPal incompleta'));
       return;
     }
+    
+    console.log('✅ NEXT_PUBLIC_PAYPAL_CLIENT_ID configurado correctamente');
 
     // Cargar PayPal SDK
     const script = document.createElement('script');
@@ -80,43 +85,43 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
     console.log('🔧 Configurando botones de PayPal...');
 
     try {
-      paypal.Buttons({
+      console.log('🔧 PayPal SDK encontrado:', paypal);
+      console.log('🔧 PayPal.Buttons disponible:', typeof paypal.Buttons);
+      
+      const buttonConfig = {
         createOrder: (data: unknown, actions: PayPalActions) => {
           try {
             console.log('🛒 Creando orden de PayPal...');
             console.log('📊 Datos de la orden:', { total, items: items.length, currency: 'USD' });
+            console.log('🔍 Items individuales:', items.map(item => ({ name: item.product.name, price: item.product.price, quantity: item.quantity })));
             
-            const orderData = {
+            // Crear una orden más simple primero para probar
+            const simpleOrderData = {
               purchase_units: [
                 {
                   amount: {
-                    value: (total / 100).toFixed(2), // Convertir centavos a dólares
-                    currency_code: 'USD',
-                    breakdown: {
-                      item_total: {
-                        value: (total / 100).toFixed(2), // Total de los items
-                        currency_code: 'USD'
-                      }
-                    }
+                    value: (total / 100).toFixed(2),
+                    currency_code: 'USD'
                   },
-                  description: `Compra de ${items.length} producto(s)`,
-                  items: items.map((item) => ({
-                    name: item.product.name,
-                    quantity: item.quantity.toString(),
-                    unit_amount: {
-                      value: (item.product.price / 100).toFixed(2), // Convertir centavos a dólares
-                      currency_code: 'USD'
-                    }
-                  }))
+                  description: `Compra de ${items.length} producto(s)`
                 }
               ]
             };
             
-            console.log('📋 Datos de orden a enviar:', JSON.stringify(orderData, null, 2));
+            console.log('📋 Orden simple a enviar:', JSON.stringify(simpleOrderData, null, 2));
+            console.log('🔧 Llamando a actions.order.create...');
             
-            return actions.order.create(orderData);
+            const result = actions.order.create(simpleOrderData);
+            console.log('✅ actions.order.create llamado exitosamente');
+            
+            return result;
           } catch (error) {
             console.error('❌ Error al crear orden:', error);
+            console.error('🔍 Detalles del error:', {
+              message: error instanceof Error ? error.message : 'Error desconocido',
+              stack: error instanceof Error ? error.stack : 'No stack trace',
+              error: error
+            });
             setError('Error al crear orden de PayPal');
             throw error;
           }
@@ -196,7 +201,13 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
         })
         // Nota: onCancel no está disponible en esta versión del SDK
         // Las cancelaciones se manejan a través de onError
-      }).render(paypalButtonRef.current);
+      };
+      
+      console.log('🔧 Configuración de botones preparada:', buttonConfig);
+      console.log('🔧 Renderizando botones...');
+      
+      paypal.Buttons(buttonConfig).render(paypalButtonRef.current);
+      console.log('✅ Botones renderizados exitosamente');
     } catch (error) {
       console.error('Error al configurar PayPal:', error);
       setError('Error al configurar PayPal');

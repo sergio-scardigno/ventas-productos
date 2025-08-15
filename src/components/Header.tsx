@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useCartStore } from '@/store/cartStore';
 import Cart from './Cart';
 
 export default function Header() {
