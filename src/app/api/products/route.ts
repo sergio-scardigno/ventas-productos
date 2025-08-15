@@ -1,6 +1,82 @@
 import { NextResponse } from 'next/server';
+import { google } from 'googleapis';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
-// Datos de ejemplo para desarrollo
+// Configuración de Google Sheets
+const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID || "19_iMYzqcG9_aoYeFIIKGAG8u9PI61Oh78vcnP5a-4Zc";
+const RANGE = 'Productos!A2:F'; // Asumiendo que tienes una hoja llamada "Productos"
+
+// Función para obtener credenciales desde archivo JSON
+function getCredentialsFromFile() {
+  try {
+    const credentialsPath = join(process.cwd(), 'just-glow-468123-v4-7bb25d1d5bc2.json');
+    
+    if (!require('fs').existsSync(credentialsPath)) {
+      throw new Error(`Archivo de credenciales no encontrado en: ${credentialsPath}`);
+    }
+    
+    const credentials = JSON.parse(readFileSync(credentialsPath, 'utf8'));
+    return credentials;
+  } catch (error) {
+    console.error('❌ Error al cargar credenciales desde archivo:', error);
+    throw error;
+  }
+}
+
+// Función para obtener productos desde Google Sheets
+async function getProductsFromGoogleSheets() {
+  try {
+    console.log('🔗 Conectando con Google Sheets...');
+    
+    const credentials = getCredentialsFromFile();
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    });
+
+    const sheets = google.sheets({ version: 'v4', auth });
+    
+    console.log(`📋 Obteniendo productos desde: ${SPREADSHEET_ID}`);
+    console.log(`📊 Rango: ${RANGE}`);
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: RANGE,
+    });
+
+    const rows = response.data.values;
+    
+    if (!rows || rows.length === 0) {
+      console.log('⚠️ No se encontraron productos en Google Sheets');
+      return [];
+    }
+
+    console.log(`✅ ${rows.length} filas obtenidas de Google Sheets`);
+
+    // Convertir filas a productos
+    const products = rows
+      .filter(row => row.length >= 3 && row[0] && row[1] && row[2]) // Filtrar filas válidas
+      .map((row, index) => ({
+        id: row[0] || `product-${index}`,
+        name: row[1] || 'Producto sin nombre',
+        price: parseFloat(row[2]) || 0,
+        image: row[3] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=300&fit=crop',
+        description: row[4] || 'Sin descripción',
+        stock: parseInt(row[5]) || 0,
+      }))
+      .filter(product => product.name !== 'Producto sin nombre' && product.price > 0); // Filtrar productos válidos
+
+    console.log(`✅ ${products.length} productos válidos procesados`);
+    return products;
+
+  } catch (error) {
+    console.error('❌ Error al obtener productos de Google Sheets:', error);
+    throw error;
+  }
+}
+
+// Datos de ejemplo como fallback
 const mockProducts = [
   {
     id: '1',
@@ -26,42 +102,37 @@ const mockProducts = [
     description: 'Auriculares bluetooth con cancelación de ruido',
     stock: 20,
   },
-  {
-    id: '4',
-    name: 'Tablet Pro',
-    price: 95000,
-    image: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&h=300&fit=crop',
-    description: 'Tablet profesional para trabajo y entretenimiento',
-    stock: 8,
-  },
-  {
-    id: '5',
-    name: 'Smartwatch',
-    price: 35000,
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=300&fit=crop',
-    description: 'Reloj inteligente con monitoreo de salud',
-    stock: 12,
-  },
-  {
-    id: '6',
-    name: 'Cámara DSLR',
-    price: 120000,
-    image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&h=300&fit=crop',
-    description: 'Cámara réflex digital profesional',
-    stock: 5,
-  },
 ];
 
 export async function GET() {
   try {
-    // Por ahora, devolvemos productos de ejemplo
-    // En producción, esto se conectaría con Google Sheets
-    return NextResponse.json(mockProducts);
+    console.log('🚀 Iniciando obtención de productos...');
+    
+    let products;
+    
+    // Intentar obtener productos de Google Sheets
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        products = await getProductsFromGoogleSheets();
+        console.log('✅ Productos obtenidos de Google Sheets');
+      } catch (sheetsError) {
+        const errorMessage = sheetsError instanceof Error ? sheetsError.message : 'Error desconocido';
+        console.error('⚠️ Error con Google Sheets, usando productos de ejemplo:', errorMessage);
+        products = mockProducts;
+      }
+    } else {
+      console.log('⚠️ No es modo desarrollo, usando productos de ejemplo');
+      products = mockProducts;
+    }
+
+    console.log(`📦 Devolviendo ${products.length} productos`);
+    return NextResponse.json(products);
+
   } catch (error) {
-    console.error('Error al obtener productos:', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    console.error('❌ Error al obtener productos:', error);
+    
+    // En caso de error, devolver productos de ejemplo
+    console.log('🔄 Devolviendo productos de ejemplo como fallback');
+    return NextResponse.json(mockProducts);
   }
 } 
