@@ -30,7 +30,9 @@ export async function saveOrderToSheet(orderData: OrderData): Promise<void> {
   try {
     console.log('💾 Guardando orden en Google Sheets:', orderData);
 
-    const response = await fetch('/api/save-order', {
+    // Usar URL absoluta para evitar problemas en el servidor
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/save-order`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

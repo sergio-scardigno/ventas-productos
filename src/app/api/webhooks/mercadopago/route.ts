@@ -57,8 +57,27 @@ export async function POST(request: NextRequest) {
     } else if (type === 'merchant_order' && data?.id) {
       // Procesar órdenes de comerciante
       console.log(`📦 Procesando orden de comerciante: ${data.id}`);
+      
+      try {
+        // Obtener detalles de la orden desde Mercado Pago
+        const orderDetails = await getMerchantOrderDetails(data.id);
+        console.log('📋 Detalles de la orden:', orderDetails);
+        
+        // Procesar la orden si tiene pagos aprobados
+        if (orderDetails && orderDetails.payments && orderDetails.payments.length > 0) {
+          for (const payment of orderDetails.payments) {
+            if (payment.status === 'approved') {
+              console.log(`✅ Pago aprobado encontrado en orden: ${payment.id}`);
+              await processApprovedPayment(payment);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error al procesar orden de comerciante:', error);
+      }
     } else {
       console.log(`ℹ️ Webhook de tipo no manejado: ${type}`);
+      console.log('📋 Datos del webhook:', JSON.stringify(body, null, 2));
     }
 
     // Responder exitosamente al webhook
@@ -110,6 +129,41 @@ async function getPaymentDetails(paymentId: string) {
     return paymentData;
   } catch (error) {
     console.error('❌ Error al obtener detalles del pago:', error);
+    throw error;
+  }
+}
+
+// Función para obtener detalles de la orden de comerciante
+async function getMerchantOrderDetails(orderId: string) {
+  try {
+    console.log(`🔍 Obteniendo detalles de la orden ${orderId}...`);
+    
+    const response = await fetch(
+      `https://api.mercadopago.com/merchant_orders/${orderId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Error HTTP ${response.status}:`, errorText);
+      throw new Error(`Error al obtener orden: ${response.status} - ${errorText}`);
+    }
+
+    const orderData = await response.json();
+    console.log(`✅ Detalles de la orden ${orderId} obtenidos:`, {
+      id: orderData.id,
+      status: orderData.status,
+      payments: orderData.payments?.length || 0
+    });
+
+    return orderData;
+  } catch (error) {
+    console.error('❌ Error al obtener detalles de la orden:', error);
     throw error;
   }
 }
