@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
 // Configuración de Google Sheets
@@ -12,7 +12,7 @@ function getCredentialsFromFile() {
   try {
     const credentialsPath = join(process.cwd(), 'just-glow-468123-v4-7bb25d1d5bc2.json');
     
-    if (!require('fs').existsSync(credentialsPath)) {
+    if (!existsSync(credentialsPath)) {
       throw new Error(`Archivo de credenciales no encontrado en: ${credentialsPath}`);
     }
     
