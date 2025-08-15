@@ -189,7 +189,7 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
           onError(err);
         },
         // Callbacks opcionales que pueden no estar disponibles en todas las versiones
-        ...(typeof (window as any).paypal?.Buttons?.prototype?.onInit !== 'undefined' && {
+        ...(typeof (window as unknown as { paypal?: { Buttons?: { prototype?: { onInit?: unknown } } } }).paypal?.Buttons?.prototype?.onInit !== 'undefined' && {
           onInit: () => {
             console.log('✅ PayPal inicializado correctamente');
           }

@@ -5,7 +5,7 @@ import { useCartStore } from '@/store/cartStore';
 import Cart from './Cart';
 
 export default function Header() {
-  const { items } = useCartStore();
+  // const { items } = useCartStore(); // Variable no utilizada
 
   return (
     <header className="bg-white shadow-sm border-b">
