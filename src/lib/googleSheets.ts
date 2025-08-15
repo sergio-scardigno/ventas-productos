@@ -1,17 +1,41 @@
 import { google } from 'googleapis';
 import { Product } from '@/types';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
-// Configuración de Google Sheets API
-// Configuración de Google Sheets API
+// Función para cargar las credenciales desde el archivo JSON
+function loadCredentials() {
+  try {
+    const credentialsPath = join(process.cwd(), 'just-glow-468123-v4-7bb25d1d5bc2.json');
+    const credentials = JSON.parse(readFileSync(credentialsPath, 'utf8'));
+    console.log('✓ Credenciales cargadas desde archivo JSON');
+    return credentials;
+  } catch (error) {
+    console.error('Error al cargar credenciales desde archivo JSON:', error);
+    if (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+      console.log('✓ Usando credenciales desde variables de entorno');
+      return {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL,
+        private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      };
+    }
+    throw new Error('No se pudieron cargar las credenciales de Google');
+  }
+}
+
+const credentials = loadCredentials();
+
 const auth = new google.auth.GoogleAuth({
-  credentials: {
-    client_email: "sergio@just-glow-468123-v4.iam.gserviceaccount.com",
-    private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC5XPs/cqIwMEXl\ndAHqrYlNt6S2Ax0Iv7vg/bf5G5qdxSP1I2U2QV/GV757rJQeg62/FlFCTdSgJffv\nyAlSSJz254BHeKArKaIB6OmrXNdP8FOD5NpSN9gZtAwUL54gUv+lHgYtrLKpV3KG\nQFiSgtYlhp9GonmTwKWpI6Au/Yq9KV+3f/z9gXqMg58+jIUgYQSDFNdDaBWLVZ/y\nc5ErHqpO72jPhdySE9IXzJWcL0Ls4bYx+kLeOwvwn6UmtvVoYFp5R3gjSvpVD83X\nEslLJtO0r5KcuDzWniZW/DGgU2NLQ81qfaQ/UxklG1yOZsehh5S9ObOYe1RnN9Sg\nBqVd/eNTAgMBAAECggEAHvny4r99ayAmDho818L4VwyBcglDKNshwo+j1vVN+V+g\niq7HkzGJl9PB+Vj1x8OpnW1VVwc6qSivLlr3c9C+qmQ1g7wcyBnFARyzL/fr42f+\nDOSJt4OtkV4NRrJOcohsQGOsFKXvlW0Prm/CXXmP3+WHaH5uYsqm5IUXl8K3FLUz\n/p3jH93AEYhyU7x+Stfy7i6ODZW6lghL0j5B6m5zXpkf6Q1abHVkOeagBtNXQaAJ\n14JZw3U5miO3L2rj9Icp58w1Ptd9Kl7lgLkq90oggo3e+N7aTiexULtxKbm7WzaJ\nBouYxxP2HLeT65ci3od1Zs4jla2QzLvqhK7zvvNmAQKBgQD1ZKe3Q3A6B3Gl4ltv\n0nsZnb0OFFRql8PglUN3/Yre9JAdRM9fP9HuCcbwzKAgFiwPk11OlzPD7gPuSRRN\nlW2vHaWLuWX3836Xm5T8CnkszHfzakMlqV9dQinKdVxQtpAv61q4oUuCZZG65Sbt\nKRB8Wc4g6kZ0Rcz+cE0cf9KkMwKBgQDBYBPiS+e9c3r6AqW48WAURB23skLJh/ps\nRxLUWMPneL9yYvI/YfgynEK/PK/n0X14cRMbaUXOqdjU5jBSMU8VORT/Csn86irt\nT+e+SDnnr5hDmPunm+a4zXbqsYkvow5lpwu/nDxjTtT6CXtazj4n8yOF4BuqmGy5\nX++RJQ+kYQKBgQCq2NVb5nvwKtaZI6t9gxFpmETT1JuhSuB5L/K1S7Sv3Z2ogwvN\nyOUj0XLMm+qv7D/o6DSCTwsfUksyT3bvPSYMUZu8V+wCYWi1rQBhKfmLkx/APS9a\nvT1D9Jib+HG5UCG6+yVCfinQM17uvDQJ0hlEOlIk4HcE5MQAMbe+K9A/uQKBgA6P\ntI+a1aV/d6gx4NbPXkPIaVB23O6eDa5vn6xbzsy0W/46EzHQp8bv21rZMAnNzZvv\nL9glkjsgsRI/Dy5xRho8BSe7YUBpRbg/Bx1eBPY8U8PrVi/l3nbWCflcSw9KQQBI\nlurj0exMeF8nraFF3IpXlbo0CQFMnwtKfRi56LahAoGAXLQ4VlSfuGsuaZJGyDPy\nPGcqgbwK9xL/bmMo9quj00hijIkjFGjeAUDb4URiBaszN57L2fJM02e8M4XPPQRc\nTCHK1jWEY2N9ncTeJ/ym+AUOL5zMD88HuJMeOf5cPwiytTobKtNoXFEERinxwLD+\n+DleaWeS+cS1TjMdTTFgl/c=\n-----END PRIVATE KEY-----\n",
-  },
+  credentials,
   scopes: [
     'https://www.googleapis.com/auth/spreadsheets.readonly',
     'https://www.googleapis.com/auth/spreadsheets'
   ],
+});
+
+// Verificar la autenticación al inicializar
+auth.getClient().catch(error => {
+  console.error('Error de autenticación con Google Sheets:', error);
 });
 
 const sheets = google.sheets({ version: 'v4', auth });
@@ -111,26 +135,36 @@ export function getMockProducts(): Product[] {
 // Función para guardar órdenes en Google Sheets
 export async function saveOrderToSheet(orderData: any): Promise<void> {
   try {
+    // Verificar que tenemos autenticación válida
+    const authClient = await auth.getClient();
+    console.log('Cliente de autenticación obtenido exitosamente');
+    
     const spreadsheetId = "19_iMYzqcG9_aoYeFIIKGAG8u9PI61Oh78vcnP5a-4Zc";
 
     // Crear fila con los datos de la orden
     const orderRow = [
-      orderData.payment_id,
-      orderData.external_reference,
-      orderData.payer_email,
-      orderData.payer_name,
-      orderData.amount,
-      orderData.currency,
-      orderData.payment_method,
-      orderData.installments,
-      orderData.status,
-      orderData.created_at,
-      orderData.approved_at,
-      JSON.stringify(orderData.items), // Productos comprados
+      orderData.payment_id || '',
+      orderData.external_reference || '',
+      orderData.payer_email || '',
+      orderData.payer_name || '',
+      orderData.amount || 0,
+      orderData.currency || 'USD',
+      orderData.payment_method || '',
+      orderData.installments || 1,
+      orderData.status || 'pending',
+      orderData.created_at || new Date().toISOString(),
+      orderData.approved_at || '',
+      JSON.stringify(orderData.items || []), // Productos comprados
     ];
 
+    console.log('Intentando guardar orden en Google Sheets:', {
+      spreadsheetId,
+      range: 'Orders!A:L',
+      orderRow
+    });
+
     // Agregar la fila al final de la hoja de órdenes
-    await sheets.spreadsheets.values.append({
+    const result = await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: 'Orders!A:L', // Asumiendo que tienes una hoja llamada "Orders"
       valueInputOption: 'RAW',
@@ -140,9 +174,16 @@ export async function saveOrderToSheet(orderData: any): Promise<void> {
       },
     });
 
-    console.log('Orden guardada exitosamente en Google Sheets');
-  } catch (error) {
-    console.error('Error al guardar orden en Google Sheets:', error);
+    console.log('Orden guardada exitosamente en Google Sheets:', result.data);
+  } catch (error: unknown) {
+    console.error('Error detallado al guardar orden en Google Sheets:', error);
+    
+    // Si es un error de autenticación, proporcionar más detalles
+    if ((error as any).code === 'ERR_OSSL_UNSUPPORTED') {
+      console.error('Error de OpenSSL - Problema con la clave privada');
+      console.error('Verifica que GOOGLE_PRIVATE_KEY esté correctamente configurada');
+    }
+    
     throw error;
   }
 }
@@ -184,4 +225,29 @@ export async function getOrdersFromSheet(): Promise<any[]> {
     console.error('Error al leer órdenes desde Google Sheets:', error);
     throw error;
   }
-} 
+}
+
+// Función para probar la conexión a Google Sheets
+export async function testGoogleSheetsConnection(): Promise<boolean> {
+  try {
+    console.log('Probando conexión a Google Sheets...');
+    
+    // Verificar autenticación
+    const authClient = await auth.getClient();
+    console.log('✓ Autenticación exitosa');
+    
+    // Verificar acceso a la hoja de productos
+    const spreadsheetId = "19_iMYzqcG9_aoYeFIIKGAG8u9PI61Oh78vcnP5a-4Zc";
+    const response = await sheets.spreadsheets.get({
+      spreadsheetId,
+    });
+    
+    console.log('✓ Acceso a la hoja de cálculo:', response.data.properties?.title);
+    console.log('✓ Hojas disponibles:', response.data.sheets?.map(s => s.properties?.title));
+    
+    return true;
+  } catch (error) {
+    console.error('✗ Error en la conexión a Google Sheets:', error);
+    return false;
+  }
+}

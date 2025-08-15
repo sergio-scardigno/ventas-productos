@@ -15,10 +15,15 @@ export default function Cart() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleMercadoPagoCheckout = async () => {
-    if (items.length === 0) return;
+    if (items.length === 0) {
+      alert('Tu carrito está vacío');
+      return;
+    }
 
     setIsProcessing(true);
     try {
+      console.log('Iniciando checkout con Mercado Pago...');
+      
       const response = await fetch('/api/create-preference', {
         method: 'POST',
         headers: {
@@ -28,20 +33,75 @@ export default function Cart() {
       });
 
       if (!response.ok) {
-        throw new Error('Error al crear la preferencia de pago');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error HTTP: ${response.status}`);
       }
 
-      const { sandbox_init_point } = await response.json();
-      window.location.href = sandbox_init_point;
+      const data = await response.json();
+      console.log('Preferencia creada:', data);
+
+      if (!data.sandbox_init_point) {
+        throw new Error('No se recibió la URL de pago de Mercado Pago');
+      }
+
+      // Guardar información de la orden en localStorage para recuperarla después
+      const orderInfo = {
+        items: items,
+        total: total,
+        preferenceId: data.id,
+        externalReference: data.external_reference,
+        timestamp: new Date().toISOString()
+      };
+      localStorage.setItem('currentOrder', JSON.stringify(orderInfo));
+
+      // Redirigir al usuario a Mercado Pago
+      console.log('Redirigiendo a Mercado Pago:', data.sandbox_init_point);
+      
+      // Redirigir directamente en la misma ventana para mejor compatibilidad
+      window.location.href = data.sandbox_init_point;
+      
     } catch (error) {
-      console.error('Error en checkout:', error);
-      alert('Error al procesar el pago. Inténtalo de nuevo.');
+      console.error('Error en checkout de Mercado Pago:', error);
+      
+      let errorMessage = 'Error al procesar el pago. Inténtalo de nuevo.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Token de acceso')) {
+          errorMessage = 'Error de configuración del sistema de pagos. Contacta al administrador.';
+        } else if (error.message.includes('estructura de los items')) {
+          errorMessage = 'Error en los productos del carrito. Recarga la página e inténtalo de nuevo.';
+        } else if (error.message.includes('No se recibió la URL')) {
+          errorMessage = 'Error al generar el enlace de pago. Inténtalo de nuevo.';
+        }
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handlePayPalSuccess = (orderId: string) => {
+  // Función para verificar el estado del pago
+  const checkPaymentStatus = async (preferenceId: string) => {
+    try {
+      console.log('Verificando estado del pago:', preferenceId);
+      
+      // Aquí podrías implementar una llamada a la API de Mercado Pago
+      // para verificar el estado del pago
+      
+      // Por ahora, mostramos un mensaje informativo
+      alert('Pago procesado. Revisa tu email para confirmación.');
+      
+      // Limpiar carrito y orden
+      clearCart();
+      localStorage.removeItem('currentOrder');
+      
+    } catch (error) {
+      console.error('Error al verificar estado del pago:', error);
+    }
+  };
+
+  const handlePayPalSuccess = async (orderId: string) => {
     alert(`¡Pago exitoso! ID de orden: ${orderId}`);
     clearCart();
     setIsOpen(false);
