@@ -195,7 +195,7 @@ async function processApprovedPayment(paymentDetails: Record<string, unknown>) {
       created_at: (paymentDetails.date_created as string) || new Date().toISOString(),
       approved_at: (paymentDetails.date_approved as string) || new Date().toISOString(),
       items: (paymentDetails.description as string) || 
-             (paymentDetails.items as Array<Record<string, unknown>>)?.map((item: any) => item.title).join(', ') || 'Productos',
+             (paymentDetails.items as Array<Record<string, unknown>>)?.map((item: Record<string, unknown>) => item.title as string).join(', ') || 'Productos',
       payment_status: 'completed',
       payment_date: (paymentDetails.date_approved as string) || new Date().toISOString(),
       total_items: (paymentDetails.items as Array<Record<string, unknown>>)?.length || 1,

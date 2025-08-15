@@ -62,8 +62,6 @@ async function getProductsFromGoogleSheetsDirect() {
   try {
     console.log('🔗 Conectando con Google Sheets usando API REST directa...');
     
-    const credentials = getCredentials();
-    
     // Para simplificar, usaremos un enfoque diferente
     console.log('⚠️ Usando método alternativo para evitar problemas de OpenSSL');
     return null; // Retornar null para usar el fallback
@@ -79,11 +77,9 @@ async function getProductsFromGoogleSheets() {
   try {
     console.log('🔗 Conectando con Google Sheets...');
     
-    const credentials = getCredentials();
-    
     // Configuración adicional para evitar problemas de OpenSSL en Windows
     const auth = new google.auth.GoogleAuth({
-      credentials,
+      credentials: getCredentials(),
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
 

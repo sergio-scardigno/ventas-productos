@@ -6,7 +6,6 @@ import Cart from './Cart';
 
 export default function Header() {
   const { items } = useCartStore();
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <header className="bg-white shadow-sm border-b">
