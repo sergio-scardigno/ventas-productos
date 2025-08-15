@@ -123,7 +123,11 @@ async function getPaymentDetails(paymentId: string) {
       status: paymentData.status,
       status_detail: paymentData.status_detail,
       amount: paymentData.transaction_amount,
-      currency: paymentData.currency_id
+      currency: paymentData.currency_id,
+      payer: paymentData.payer,
+      payment_method: paymentData.payment_method,
+      items: paymentData.items,
+      description: paymentData.description
     });
 
     return paymentData;
@@ -158,7 +162,9 @@ async function getMerchantOrderDetails(orderId: string) {
     console.log(`✅ Detalles de la orden ${orderId} obtenidos:`, {
       id: orderData.id,
       status: orderData.status,
-      payments: orderData.payments?.length || 0
+      payments: orderData.payments?.length || 0,
+      items: orderData.items,
+      total_amount: orderData.total_amount
     });
 
     return orderData;
@@ -178,18 +184,21 @@ async function processApprovedPayment(paymentDetails: Record<string, unknown>) {
       payment_id: (paymentDetails.id as string) || '',
       external_reference: (paymentDetails.external_reference as string) || `MP-${paymentDetails.id}`,
       payer_email: (paymentDetails.payer as Record<string, unknown>)?.email as string || 'No especificado',
-      payer_name: (paymentDetails.payer as Record<string, unknown>)?.name as string || 'No especificado',
+      payer_name: (paymentDetails.payer as Record<string, unknown>)?.name as string || 
+                  (paymentDetails.payer as Record<string, unknown>)?.first_name as string || 'No especificado',
       amount: (paymentDetails.transaction_amount as number) || 0,
       currency: (paymentDetails.currency_id as string) || 'ARS',
-      payment_method: (paymentDetails.payment_method as Record<string, unknown>)?.type as string || 'No especificado',
+      payment_method: (paymentDetails.payment_method as Record<string, unknown>)?.type as string || 
+                     (paymentDetails.payment_method as Record<string, unknown>)?.id as string || 'No especificado',
       installments: (paymentDetails.installments as number) || 1,
       status: (paymentDetails.status as string) || '',
       created_at: (paymentDetails.date_created as string) || new Date().toISOString(),
       approved_at: (paymentDetails.date_approved as string) || new Date().toISOString(),
-      items: (paymentDetails.description as string) || 'Productos',
+      items: (paymentDetails.description as string) || 
+             (paymentDetails.items as Array<Record<string, unknown>>)?.map((item: any) => item.title).join(', ') || 'Productos',
       payment_status: 'completed',
       payment_date: (paymentDetails.date_approved as string) || new Date().toISOString(),
-      total_items: 1,
+      total_items: (paymentDetails.items as Array<Record<string, unknown>>)?.length || 1,
     };
 
     console.log('📊 Datos de orden preparados:', orderData);
