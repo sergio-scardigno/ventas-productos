@@ -83,31 +83,38 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
       paypal.Buttons({
         createOrder: (data: unknown, actions: PayPalActions) => {
           try {
-                         return actions.order.create({
-               purchase_units: [
-                 {
-                   amount: {
-                     value: (total / 100).toFixed(2), // Convertir centavos a dólares
-                     currency_code: 'USD',
-                     breakdown: {
-                       item_total: {
-                         value: (total / 100).toFixed(2), // Total de los items
-                         currency_code: 'USD'
-                       }
-                     }
-                   },
-                   description: `Compra de ${items.length} producto(s)`,
-                   items: items.map((item) => ({
-                     name: item.product.name,
-                     quantity: item.quantity.toString(),
-                     unit_amount: {
-                       value: (item.product.price / 100).toFixed(2), // Convertir centavos a dólares
-                       currency_code: 'USD'
-                     }
-                   }))
-                 }
-               ]
-             });
+            console.log('🛒 Creando orden de PayPal...');
+            console.log('📊 Datos de la orden:', { total, items: items.length, currency: 'USD' });
+            
+            const orderData = {
+              purchase_units: [
+                {
+                  amount: {
+                    value: (total / 100).toFixed(2), // Convertir centavos a dólares
+                    currency_code: 'USD',
+                    breakdown: {
+                      item_total: {
+                        value: (total / 100).toFixed(2), // Total de los items
+                        currency_code: 'USD'
+                      }
+                    }
+                  },
+                  description: `Compra de ${items.length} producto(s)`,
+                  items: items.map((item) => ({
+                    name: item.product.name,
+                    quantity: item.quantity.toString(),
+                    unit_amount: {
+                      value: (item.product.price / 100).toFixed(2), // Convertir centavos a dólares
+                      currency_code: 'USD'
+                    }
+                  }))
+                }
+              ]
+            };
+            
+            console.log('📋 Datos de orden a enviar:', JSON.stringify(orderData, null, 2));
+            
+            return actions.order.create(orderData);
           } catch (error) {
             console.error('❌ Error al crear orden:', error);
             setError('Error al crear orden de PayPal');
@@ -116,26 +123,37 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
         },
         onApprove: async (data: PayPalOrder, actions: PayPalActions) => {
           try {
+            console.log('🎯 onApprove llamado con datos:', data);
             setIsLoading(true);
             setError(null);
             
             // Verificar que tenemos un ID de orden válido
-            if (!data || !data.id) {
-              console.error('❌ ID de orden inválido:', data);
-              throw new Error('ID de orden inválido');
+            if (!data) {
+              console.error('❌ Datos de orden vacíos:', data);
+              throw new Error('Datos de orden vacíos');
+            }
+            
+            if (!data.id) {
+              console.error('❌ ID de orden faltante:', data);
+              throw new Error('ID de orden faltante');
             }
             
             console.log('💰 Capturando orden de PayPal:', data.id);
+            console.log('📋 Datos completos de la orden:', JSON.stringify(data, null, 2));
             
             // Agregar un pequeño delay para evitar problemas de timing
+            console.log('⏳ Esperando 1 segundo antes de capturar...');
             await new Promise(resolve => setTimeout(resolve, 1000));
             
+            console.log('🔍 Iniciando captura de orden...');
             const order = await actions.order.capture();
             console.log('✅ Orden capturada:', order);
             
             if (order && order.status === 'COMPLETED') {
               console.log('🎉 Pago completado exitosamente');
-              onSuccess(order.id || data.id);
+              const orderId = order.id || data.id;
+              console.log('🆔 ID de orden final:', orderId);
+              onSuccess(orderId);
             } else {
               console.error('❌ Estado de orden inesperado:', order?.status);
               const errorMsg = `Estado de orden inesperado: ${order?.status || 'desconocido'}`;
@@ -152,6 +170,8 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
                 errorMessage = 'La ventana de PayPal se cerró. Inténtalo de nuevo.';
               } else if (error.message.includes('global_session_not_found')) {
                 errorMessage = 'Sesión de PayPal expirada. Recarga la página e inténtalo de nuevo.';
+              } else if (error.message.includes('ID de orden')) {
+                errorMessage = 'Error en la creación de la orden. Inténtalo de nuevo.';
               } else {
                 errorMessage = error.message;
               }
@@ -167,7 +187,13 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
           console.error('❌ Error en PayPal:', err);
           setError('Error en PayPal. Inténtalo de nuevo.');
           onError(err);
-        }
+        },
+        // Callbacks opcionales que pueden no estar disponibles en todas las versiones
+        ...(typeof (window as any).paypal?.Buttons?.prototype?.onInit !== 'undefined' && {
+          onInit: () => {
+            console.log('✅ PayPal inicializado correctamente');
+          }
+        })
         // Nota: onCancel no está disponible en esta versión del SDK
         // Las cancelaciones se manejan a través de onError
       }).render(paypalButtonRef.current);
@@ -191,17 +217,30 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
       <div className="w-full">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-3">
           <p className="text-sm">{error}</p>
+          <p className="text-xs text-red-600 mt-1">
+            Si el problema persiste, recarga la página
+          </p>
         </div>
-        <button
-          onClick={() => {
-            setError(null);
-            // Recargar PayPal para crear una nueva sesión
-            window.location.reload();
-          }}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200"
-        >
-          Reintentar con PayPal
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={() => {
+              console.log('🔄 Reintentando con PayPal...');
+              setError(null);
+            }}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200"
+          >
+            Reintentar con PayPal
+          </button>
+          <button
+            onClick={() => {
+              console.log('🔄 Recargando página para nueva sesión...');
+              window.location.reload();
+            }}
+            className="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200"
+          >
+            Recargar Página
+          </button>
+        </div>
       </div>
     );
   }
