@@ -72,7 +72,9 @@ export async function sendPaymentConfirmationEmail(orderData: OrderData): Promis
       html: emailContent
     };
 
-    const response = await fetch('/api/send-email', {
+    // Usar URL absoluta para evitar problemas en el servidor
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/send-email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -130,7 +132,9 @@ export async function sendOrderNotificationEmail(orderData: OrderData): Promise<
       html: emailContent
     };
 
-    const response = await fetch('/api/send-email', {
+    // Usar URL absoluta para evitar problemas en el servidor
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/send-email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
