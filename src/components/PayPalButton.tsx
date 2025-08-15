@@ -50,7 +50,10 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
     const script = document.createElement('script');
     script.src = `https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD`;
     script.async = true;
-    script.onload = () => setPaypalLoaded(true);
+    script.onload = () => {
+      console.log('✅ PayPal SDK cargado correctamente');
+      setPaypalLoaded(true);
+    };
     script.onerror = () => {
       console.error('❌ Error al cargar PayPal SDK');
       onError(new Error('Error al cargar PayPal'));
@@ -69,14 +72,15 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
 
     // Configurar PayPal
     const paypal = (window as unknown as { paypal: PayPalSDK }).paypal;
-    if (!paypal) return;
+    if (!paypal) {
+      console.error('❌ PayPal SDK no encontrado en window');
+      return;
+    }
+    
+    console.log('🔧 Configurando botones de PayPal...');
 
     try {
       paypal.Buttons({
-        onInit: (data: unknown, actions: PayPalActions) => {
-          console.log('✅ PayPal inicializado correctamente');
-          return Promise.resolve();
-        },
         createOrder: (data: unknown, actions: PayPalActions) => {
           try {
                          return actions.order.create({
@@ -163,11 +167,9 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
           console.error('❌ Error en PayPal:', err);
           setError('Error en PayPal. Inténtalo de nuevo.');
           onError(err);
-        },
-        onCancel: () => {
-          console.log('❌ Usuario canceló el pago');
-          setError('Pago cancelado por el usuario');
         }
+        // Nota: onCancel no está disponible en esta versión del SDK
+        // Las cancelaciones se manejan a través de onError
       }).render(paypalButtonRef.current);
     } catch (error) {
       console.error('Error al configurar PayPal:', error);
