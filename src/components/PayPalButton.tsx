@@ -73,6 +73,10 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
 
     try {
       paypal.Buttons({
+        onInit: (data: unknown, actions: PayPalActions) => {
+          console.log('✅ PayPal inicializado correctamente');
+          return Promise.resolve();
+        },
         createOrder: (data: unknown, actions: PayPalActions) => {
           try {
                          return actions.order.create({
@@ -110,23 +114,46 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
           try {
             setIsLoading(true);
             setError(null);
+            
+            // Verificar que tenemos un ID de orden válido
+            if (!data || !data.id) {
+              console.error('❌ ID de orden inválido:', data);
+              throw new Error('ID de orden inválido');
+            }
+            
             console.log('💰 Capturando orden de PayPal:', data.id);
+            
+            // Agregar un pequeño delay para evitar problemas de timing
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
             const order = await actions.order.capture();
             console.log('✅ Orden capturada:', order);
             
-            if (order.status === 'COMPLETED') {
+            if (order && order.status === 'COMPLETED') {
               console.log('🎉 Pago completado exitosamente');
-              onSuccess(order.id);
+              onSuccess(order.id || data.id);
             } else {
-              console.error('❌ Estado de orden inesperado:', order.status);
-              const errorMsg = `Estado de orden inesperado: ${order.status}`;
+              console.error('❌ Estado de orden inesperado:', order?.status);
+              const errorMsg = `Estado de orden inesperado: ${order?.status || 'desconocido'}`;
               setError(errorMsg);
               onError(new Error(errorMsg));
             }
           } catch (error) {
             console.error('❌ Error al capturar orden:', error);
-            setError('Error al procesar el pago con PayPal');
+            
+            // Manejar errores específicos de PayPal
+            let errorMessage = 'Error al procesar el pago con PayPal';
+            if (error instanceof Error) {
+              if (error.message.includes('Window closed')) {
+                errorMessage = 'La ventana de PayPal se cerró. Inténtalo de nuevo.';
+              } else if (error.message.includes('global_session_not_found')) {
+                errorMessage = 'Sesión de PayPal expirada. Recarga la página e inténtalo de nuevo.';
+              } else {
+                errorMessage = error.message;
+              }
+            }
+            
+            setError(errorMessage);
             onError(error);
           } finally {
             setIsLoading(false);
@@ -136,6 +163,10 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
           console.error('❌ Error en PayPal:', err);
           setError('Error en PayPal. Inténtalo de nuevo.');
           onError(err);
+        },
+        onCancel: () => {
+          console.log('❌ Usuario canceló el pago');
+          setError('Pago cancelado por el usuario');
         }
       }).render(paypalButtonRef.current);
     } catch (error) {
@@ -160,7 +191,11 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
           <p className="text-sm">{error}</p>
         </div>
         <button
-          onClick={() => setError(null)}
+          onClick={() => {
+            setError(null);
+            // Recargar PayPal para crear una nueva sesión
+            window.location.reload();
+          }}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200"
         >
           Reintentar con PayPal
