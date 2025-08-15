@@ -49,7 +49,24 @@ export async function POST(request: NextRequest) {
     });
 
     // Verificar que existe la URL base
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    
+    // Si no está configurada, intentar detectar automáticamente
+    if (!baseUrl) {
+      // En producción, usar el host de la request
+      if (process.env.NODE_ENV === 'production') {
+        const host = request.headers.get('host');
+        const protocol = request.headers.get('x-forwarded-proto') || 'https';
+        baseUrl = `${protocol}://${host}`;
+        console.log('🌐 URL base detectada automáticamente:', baseUrl);
+      } else {
+        baseUrl = 'http://localhost:3000';
+        console.log('🌐 Usando localhost para desarrollo');
+      }
+    }
+    
+    console.log('🌐 URL base final:', baseUrl);
+    console.log('🔧 NEXT_PUBLIC_BASE_URL:', process.env.NEXT_PUBLIC_BASE_URL);
 
     // Crear preferencia de pago
     const preference = {
@@ -82,6 +99,13 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('📋 Preferencia a crear:', JSON.stringify(preference, null, 2));
+    
+    // Log de las URLs generadas para debug
+    console.log('🔗 URLs de retorno configuradas:');
+    console.log('  - Success:', `${baseUrl}/success`);
+    console.log('  - Failure:', `${baseUrl}/failure`);
+    console.log('  - Pending:', `${baseUrl}/pending`);
+    console.log('  - Webhook:', `${baseUrl}/api/webhooks/mercadopago`);
 
     const preferenceClient = new Preference(client);
     const response = await preferenceClient.create({ body: preference });
