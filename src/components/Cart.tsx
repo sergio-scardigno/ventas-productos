@@ -81,33 +81,13 @@ export default function Cart() {
     }
   };
 
-  // Función para verificar el estado del pago
-  const checkPaymentStatus = async (preferenceId: string) => {
-    try {
-      console.log('Verificando estado del pago:', preferenceId);
-      
-      // Aquí podrías implementar una llamada a la API de Mercado Pago
-      // para verificar el estado del pago
-      
-      // Por ahora, mostramos un mensaje informativo
-      alert('Pago procesado. Revisa tu email para confirmación.');
-      
-      // Limpiar carrito y orden
-      clearCart();
-      localStorage.removeItem('currentOrder');
-      
-    } catch (error) {
-      console.error('Error al verificar estado del pago:', error);
-    }
-  };
-
   const handlePayPalSuccess = async (orderId: string) => {
     alert(`¡Pago exitoso! ID de orden: ${orderId}`);
     clearCart();
     setIsOpen(false);
   };
 
-  const handlePayPalError = (error: any) => {
+  const handlePayPalError = (error: unknown) => {
     console.error('Error en PayPal:', error);
     alert('Error al procesar el pago con PayPal. Inténtalo de nuevo.');
   };

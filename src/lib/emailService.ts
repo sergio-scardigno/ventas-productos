@@ -9,151 +9,152 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Función para enviar email de confirmación de pago
-export async function sendPaymentConfirmationEmail(orderData: any): Promise<void> {
+interface OrderData {
+  payment_id: string;
+  external_reference: string;
+  payer_email: string;
+  payer_name: string;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  installments: number;
+  status: string;
+  created_at: string;
+  approved_at: string;
+  items: string;
+  payment_status: string;
+  payment_date: string;
+  total_items: number;
+}
+
+interface EmailData {
+  to: string;
+  subject: string;
+  html: string;
+}
+
+interface EmailResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export async function sendPaymentConfirmationEmail(orderData: OrderData): Promise<EmailResponse> {
   try {
-    // Email para el administrador
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (adminEmail) {
-      await sendAdminNotification(orderData, adminEmail);
+    const emailContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #28a745;">¡Pago Confirmado!</h2>
+        <p>Hola ${orderData.payer_name},</p>
+        <p>Tu pago ha sido procesado exitosamente. Aquí están los detalles:</p>
+        
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="color: #495057; margin-top: 0;">Detalles del Pago</h3>
+          <p><strong>ID de Pago:</strong> ${orderData.payment_id}</p>
+          <p><strong>Referencia:</strong> ${orderData.external_reference}</p>
+          <p><strong>Monto:</strong> ${orderData.amount} ${orderData.currency}</p>
+          <p><strong>Método de Pago:</strong> ${orderData.payment_method}</p>
+          <p><strong>Cuotas:</strong> ${orderData.installments}</p>
+          <p><strong>Estado:</strong> ${orderData.status}</p>
+          <p><strong>Fecha:</strong> ${new Date(orderData.payment_date).toLocaleDateString('es-AR')}</p>
+        </div>
+        
+        <p>Gracias por tu compra. Si tienes alguna pregunta, no dudes en contactarnos.</p>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; text-align: center; color: #6c757d;">
+          <p>Este es un email automático, por favor no respondas a este mensaje.</p>
+        </div>
+      </div>
+    `;
+
+    const emailData: EmailData = {
+      to: orderData.payer_email,
+      subject: 'Confirmación de Pago - Ventas Productos',
+      html: emailContent
+    };
+
+    const response = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(emailData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al enviar email');
     }
 
-    // Email para el cliente (si se proporciona)
-    if (orderData.payer_email && orderData.payer_email !== 'No especificado') {
-      await sendCustomerConfirmation(orderData);
-    }
+    return {
+      success: true,
+      message: 'Email de confirmación enviado exitosamente'
+    };
 
-    console.log('✓ Emails de confirmación enviados exitosamente');
   } catch (error) {
-    console.error('Error al enviar emails de confirmación:', error);
-    // No lanzamos el error para no interrumpir el flujo principal
+    console.error('Error al enviar email de confirmación:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido'
+    };
   }
 }
 
-// Función para enviar notificación al administrador
-async function sendAdminNotification(orderData: any, adminEmail: string): Promise<void> {
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: adminEmail,
-    subject: `🛒 Nueva orden recibida - ${orderData.payment_id}`,
-    html: `
+export async function sendOrderNotificationEmail(orderData: OrderData): Promise<EmailResponse> {
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+    
+    const emailContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background-color: #4F46E5; color: white; padding: 20px; text-align: center;">
-          <h1 style="margin: 0;">🛒 Nueva Orden Recibida</h1>
+        <h2 style="color: #007bff;">Nueva Orden Recibida</h2>
+        <p>Se ha recibido una nueva orden de pago:</p>
+        
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="color: #495057; margin-top: 0;">Detalles de la Orden</h3>
+          <p><strong>ID de Pago:</strong> ${orderData.payment_id}</p>
+          <p><strong>Referencia:</strong> ${orderData.external_reference}</p>
+          <p><strong>Cliente:</strong> ${orderData.payer_name}</p>
+          <p><strong>Email:</strong> ${orderData.payer_email}</p>
+          <p><strong>Monto:</strong> ${orderData.amount} ${orderData.currency}</p>
+          <p><strong>Método de Pago:</strong> ${orderData.payment_method}</p>
+          <p><strong>Estado:</strong> ${orderData.status}</p>
+          <p><strong>Fecha:</strong> ${new Date(orderData.payment_date).toLocaleDateString('es-AR')}</p>
         </div>
         
-        <div style="padding: 20px; background-color: #f9fafb;">
-          <h2 style="color: #374151;">Detalles de la Orden</h2>
-          
-          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-            <tr style="background-color: #f3f4f6;">
-              <td style="padding: 10px; border: 1px solid #d1d5db; font-weight: bold;">ID de Pago:</td>
-              <td style="padding: 10px; border: 1px solid #d1d5db;">${orderData.payment_id}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; border: 1px solid #d1d5db; font-weight: bold;">Cliente:</td>
-              <td style="padding: 10px; border: 1px solid #d1d5db;">${orderData.payer_name}</td>
-            </tr>
-            <tr style="background-color: #f3f4f6;">
-              <td style="padding: 10px; border: 1px solid #d1d5db; font-weight: bold;">Email:</td>
-              <td style="padding: 10px; border: 1px solid #d1d5db;">${orderData.payer_email}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; border: 1px solid #d1d5db; font-weight: bold;">Monto:</td>
-              <td style="padding: 10px; border: 1px solid #d1d5db;">$${(orderData.amount / 100).toFixed(2)} ${orderData.currency}</td>
-            </tr>
-            <tr style="background-color: #f3f4f6;">
-              <td style="padding: 10px; border: 1px solid #d1d5db; font-weight: bold;">Método:</td>
-              <td style="padding: 10px; border: 1px solid #d1d5db;">${orderData.payment_method}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; border: 1px solid #d1d5db; font-weight: bold;">Estado:</td>
-              <td style="padding: 10px; border: 1px solid #d1d5db; color: #059669;">${orderData.status}</td>
-            </tr>
-            <tr style="background-color: #f3f4f6;">
-              <td style="padding: 10px; border: 1px solid #d1d5db; font-weight: bold;">Fecha:</td>
-              <td style="padding: 10px; border: 1px solid #d1d5db;">${new Date(orderData.created_at).toLocaleString('es-ES')}</td>
-            </tr>
-          </table>
-          
-          <h3 style="color: #374151;">Productos Comprados</h3>
-          <div style="background-color: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
-            ${orderData.items.map((item: any) => `
-              <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
-                <span>${item.name} x${item.quantity}</span>
-                <span style="font-weight: bold;">$${(item.price / 100).toFixed(2)}</span>
-              </div>
-            `).join('')}
-          </div>
-          
-          <div style="margin-top: 20px; padding: 15px; background-color: #10B981; color: white; border-radius: 8px; text-align: center;">
-            <strong>Total: $${(orderData.amount / 100).toFixed(2)} ${orderData.currency}</strong>
-          </div>
-        </div>
-        
-        <div style="background-color: #6B7280; color: white; padding: 15px; text-align: center; font-size: 12px;">
-          <p style="margin: 0;">Este email fue enviado automáticamente por tu sistema de ventas</p>
-        </div>
+        <p>La orden ha sido procesada y guardada en el sistema.</p>
       </div>
-    `,
-  };
+    `;
 
-  await transporter.sendMail(mailOptions);
-  console.log('✓ Notificación enviada al administrador:', adminEmail);
-}
+    const emailData: EmailData = {
+      to: adminEmail,
+      subject: 'Nueva Orden - Ventas Productos',
+      html: emailContent
+    };
 
-// Función para enviar confirmación al cliente
-async function sendCustomerConfirmation(orderData: any): Promise<void> {
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: orderData.payer_email,
-    subject: `✅ Confirmación de tu compra - ${orderData.payment_id}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background-color: #10B981; color: white; padding: 20px; text-align: center;">
-          <h1 style="margin: 0;">✅ ¡Gracias por tu compra!</h1>
-        </div>
-        
-        <div style="padding: 20px; background-color: #f9fafb;">
-          <p style="color: #374151; font-size: 16px;">Hola <strong>${orderData.payer_name}</strong>,</p>
-          
-          <p style="color: #6B7280;">Tu pedido ha sido procesado exitosamente. Aquí tienes los detalles:</p>
-          
-          <div style="background-color: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin: 20px 0;">
-            <h3 style="color: #374151; margin-top: 0;">Resumen de la Orden</h3>
-            <p style="margin: 5px 0;"><strong>ID de Orden:</strong> ${orderData.payment_id}</p>
-            <p style="margin: 5px 0;"><strong>Fecha:</strong> ${new Date(orderData.created_at).toLocaleString('es-ES')}</p>
-            <p style="margin: 5px 0;"><strong>Total:</strong> $${(orderData.amount / 100).toFixed(2)} ${orderData.currency}</p>
-          </div>
-          
-          <h3 style="color: #374151;">Productos Comprados</h3>
-          <div style="background-color: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
-            ${orderData.items.map((item: any) => `
-              <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
-                <span>${item.name} x${item.quantity}</span>
-                <span style="font-weight: bold;">$${(item.price / 100).toFixed(2)}</span>
-              </div>
-            `).join('')}
-          </div>
-          
-          <div style="margin-top: 20px; padding: 15px; background-color: #3B82F6; color: white; border-radius: 8px; text-align: center;">
-            <strong>Total: $${(orderData.amount / 100).toFixed(2)} ${orderData.currency}</strong>
-          </div>
-          
-          <p style="color: #6B7280; margin-top: 20px;">
-            Si tienes alguna pregunta sobre tu pedido, no dudes en contactarnos.
-          </p>
-        </div>
-        
-        <div style="background-color: #6B7280; color: white; padding: 15px; text-align: center; font-size: 12px;">
-          <p style="margin: 0;">Gracias por confiar en nosotros</p>
-        </div>
-      </div>
-    `,
-  };
+    const response = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(emailData),
+    });
 
-  await transporter.sendMail(mailOptions);
-  console.log('✓ Confirmación enviada al cliente:', orderData.payer_email);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al enviar email');
+    }
+
+    return {
+      success: true,
+      message: 'Email de notificación enviado exitosamente'
+    };
+
+  } catch (error) {
+    console.error('Error al enviar email de notificación:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido'
+    };
+  }
 }
 
 // Función para probar la conexión de email

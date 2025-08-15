@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { PaymentMethod } from '@/types';
 import { CreditCard, Wallet } from 'lucide-react';
 

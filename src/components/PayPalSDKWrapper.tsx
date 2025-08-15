@@ -2,55 +2,39 @@
 
 import { useEffect, useState } from 'react';
 
-declare global {
-  interface Window {
-    paypal: any;
-  }
-}
-
 interface PayPalSDKWrapperProps {
-  clientId: string;
-  onLoad: (paypal: any) => void;
   children: React.ReactNode;
 }
 
-export function PayPalSDKWrapper({ clientId, onLoad, children }: PayPalSDKWrapperProps) {
+declare global {
+  interface Window {
+    paypal?: unknown;
+  }
+}
+
+export default function PayPalSDKWrapper({ children }: PayPalSDKWrapperProps) {
   const [sdkReady, setSdkReady] = useState(false);
 
   useEffect(() => {
-    // Verificar si el script ya está cargado
+    // Verificar si PayPal ya está cargado
     if (window.paypal) {
       setSdkReady(true);
-      onLoad(window.paypal);
       return;
     }
 
-    // Función para cargar el script de PayPal
-    const loadPayPalSDK = () => {
-      const script = document.createElement('script');
-      script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&intent=capture`;
-      script.async = true;
-      
-      script.onload = () => {
-        setSdkReady(true);
-        onLoad(window.paypal);
-      };
+    // Cargar PayPal SDK
+    const script = document.createElement('script');
+    script.src = `https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD`;
+    script.async = true;
+    script.onload = () => setSdkReady(true);
+    document.head.appendChild(script);
 
-      script.onerror = () => {
-        console.error('Error al cargar el SDK de PayPal');
-      };
-
-      document.body.appendChild(script);
-    };
-
-    loadPayPalSDK();
-
-    // Limpieza
     return () => {
-      const scripts = document.querySelectorAll('script[src*="paypal.com/sdk/js"]');
-      scripts.forEach(script => script.remove());
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
     };
-  }, [clientId, onLoad]);
+  }, []);
 
   if (!sdkReady) {
     return <div>Cargando PayPal...</div>;

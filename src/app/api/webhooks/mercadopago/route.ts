@@ -10,10 +10,7 @@ export async function POST(request: NextRequest) {
     // Extraer información del webhook
     const { 
       type, 
-      data, 
-      action,
-      user_id,
-      api_version 
+      data
     } = body;
 
     // Procesar según el tipo de notificación
@@ -118,26 +115,26 @@ async function getPaymentDetails(paymentId: string) {
 }
 
 // Función para procesar pago aprobado
-async function processApprovedPayment(paymentDetails: any) {
+async function processApprovedPayment(paymentDetails: Record<string, unknown>) {
   try {
     console.log('✅ Procesando pago aprobado:', paymentDetails.id);
 
     // Preparar datos para Google Sheets
     const orderData = {
-      payment_id: paymentDetails.id.toString(),
-      external_reference: paymentDetails.external_reference || `MP-${paymentDetails.id}`,
-      payer_email: paymentDetails.payer?.email || 'No especificado',
-      payer_name: paymentDetails.payer?.name || 'No especificado',
-      amount: paymentDetails.transaction_amount || 0,
-      currency: paymentDetails.currency_id || 'ARS',
-      payment_method: paymentDetails.payment_method?.type || 'No especificado',
-      installments: paymentDetails.installments || 1,
-      status: paymentDetails.status,
-      created_at: paymentDetails.date_created || new Date().toISOString(),
-      approved_at: paymentDetails.date_approved || new Date().toISOString(),
-      items: paymentDetails.description || 'Productos',
+      payment_id: (paymentDetails.id as string) || '',
+      external_reference: (paymentDetails.external_reference as string) || `MP-${paymentDetails.id}`,
+      payer_email: (paymentDetails.payer as Record<string, unknown>)?.email as string || 'No especificado',
+      payer_name: (paymentDetails.payer as Record<string, unknown>)?.name as string || 'No especificado',
+      amount: (paymentDetails.transaction_amount as number) || 0,
+      currency: (paymentDetails.currency_id as string) || 'ARS',
+      payment_method: (paymentDetails.payment_method as Record<string, unknown>)?.type as string || 'No especificado',
+      installments: (paymentDetails.installments as number) || 1,
+      status: (paymentDetails.status as string) || '',
+      created_at: (paymentDetails.date_created as string) || new Date().toISOString(),
+      approved_at: (paymentDetails.date_approved as string) || new Date().toISOString(),
+      items: (paymentDetails.description as string) || 'Productos',
       payment_status: 'completed',
-      payment_date: paymentDetails.date_approved || new Date().toISOString(),
+      payment_date: (paymentDetails.date_approved as string) || new Date().toISOString(),
       total_items: 1,
     };
 

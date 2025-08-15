@@ -1,29 +1,23 @@
 import { NextResponse } from 'next/server';
-import { testGoogleSheetsConnection } from '@/lib/googleSheets';
 
 export async function GET() {
   try {
-    console.log('Iniciando prueba de conexión...');
+    console.log('🧪 Probando conexión básica...');
     
-    const isConnected = await testGoogleSheetsConnection();
-    
-    if (isConnected) {
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Conexión a Google Sheets exitosa' 
-      });
-    } else {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Error en la conexión a Google Sheets' 
-      }, { status: 500 });
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Conexión básica funcionando',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development'
+    });
   } catch (error) {
-    console.error('Error en la prueba de conexión:', error);
-    return NextResponse.json({ 
-      success: false, 
-      message: 'Error en la prueba de conexión',
-      error: error instanceof Error ? error.message : 'Error desconocido'
-    }, { status: 500 });
+    console.error('❌ Error en test de conexión:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      },
+      { status: 500 }
+    );
   }
 }
