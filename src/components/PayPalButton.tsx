@@ -34,21 +34,35 @@ interface PayPalSDK {
 
 export default function PayPalButton({ items, total, onSuccess, onError }: PayPalButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const paypalButtonRef = useRef<HTMLDivElement>(null);
   const [paypalLoaded, setPaypalLoaded] = useState(false);
 
   useEffect(() => {
+    // Verificar que existe el Client ID de PayPal
+    if (!process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID) {
+      console.error('❌ NEXT_PUBLIC_PAYPAL_CLIENT_ID no está configurado');
+      onError(new Error('Configuración de PayPal incompleta'));
+      return;
+    }
+
     // Cargar PayPal SDK
     const script = document.createElement('script');
     script.src = `https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD`;
     script.async = true;
     script.onload = () => setPaypalLoaded(true);
+    script.onerror = () => {
+      console.error('❌ Error al cargar PayPal SDK');
+      onError(new Error('Error al cargar PayPal'));
+    };
     document.head.appendChild(script);
 
     return () => {
-      document.head.removeChild(script);
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
     };
-  }, []);
+  }, [onError]);
 
   useEffect(() => {
     if (!paypalLoaded || !paypalButtonRef.current) return;
@@ -60,48 +74,67 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
     try {
       paypal.Buttons({
         createOrder: (data: unknown, actions: PayPalActions) => {
-          return actions.order.create({
-            purchase_units: [
-              {
-                amount: {
-                  value: total.toString(),
-                  currency_code: 'USD'
-                },
-                description: `Compra de ${items.length} producto(s)`,
-                items: items.map((item) => ({
-                  name: item.product.name,
-                  quantity: item.quantity.toString(),
-                  unit_amount: {
-                    value: item.product.price.toString(),
-                    currency_code: 'USD'
-                  }
-                }))
-              }
-            ]
-          });
+          try {
+                         return actions.order.create({
+               purchase_units: [
+                 {
+                   amount: {
+                     value: (total / 100).toFixed(2), // Convertir centavos a dólares
+                     currency_code: 'USD'
+                   },
+                   description: `Compra de ${items.length} producto(s)`,
+                   items: items.map((item) => ({
+                     name: item.product.name,
+                     quantity: item.quantity.toString(),
+                     unit_amount: {
+                       value: (item.product.price / 100).toFixed(2), // Convertir centavos a dólares
+                       currency_code: 'USD'
+                     }
+                   }))
+                 }
+               ]
+             });
+          } catch (error) {
+            console.error('❌ Error al crear orden:', error);
+            setError('Error al crear orden de PayPal');
+            throw error;
+          }
         },
         onApprove: async (data: PayPalOrder, actions: PayPalActions) => {
           try {
             setIsLoading(true);
+            setError(null);
+            console.log('💰 Capturando orden de PayPal:', data.id);
+            
             const order = await actions.order.capture();
+            console.log('✅ Orden capturada:', order);
             
             if (order.status === 'COMPLETED') {
+              console.log('🎉 Pago completado exitosamente');
               onSuccess(order.id);
             } else {
-              onError(new Error(`Estado de orden inesperado: ${order.status}`));
+              console.error('❌ Estado de orden inesperado:', order.status);
+              const errorMsg = `Estado de orden inesperado: ${order.status}`;
+              setError(errorMsg);
+              onError(new Error(errorMsg));
             }
           } catch (error) {
+            console.error('❌ Error al capturar orden:', error);
+            setError('Error al procesar el pago con PayPal');
             onError(error);
           } finally {
             setIsLoading(false);
           }
         },
         onError: (err: unknown) => {
+          console.error('❌ Error en PayPal:', err);
+          setError('Error en PayPal. Inténtalo de nuevo.');
           onError(err);
         }
       }).render(paypalButtonRef.current);
     } catch (error) {
       console.error('Error al configurar PayPal:', error);
+      setError('Error al configurar PayPal');
       onError(error);
     }
   }, [paypalLoaded, items, total, onSuccess, onError]);
@@ -110,6 +143,22 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
     return (
       <div className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 text-center">
         Procesando pago...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-3">
+          <p className="text-sm">{error}</p>
+        </div>
+        <button
+          onClick={() => setError(null)}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200"
+        >
+          Reintentar con PayPal
+        </button>
       </div>
     );
   }
