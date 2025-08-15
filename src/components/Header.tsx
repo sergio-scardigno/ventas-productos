@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
+import Cart from './Cart';
 
 export default function Header() {
   const { items } = useCartStore();
@@ -24,16 +24,7 @@ export default function Header() {
             <Link href="/" className="text-gray-600 hover:text-gray-900 transition-colors">
               Productos
             </Link>
-            <div className="relative">
-              <Link href="/cart" className="text-gray-600 hover:text-gray-900 transition-colors">
-                <ShoppingCart className="w-6 h-6" />
-                {totalItems > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {totalItems}
-                  </span>
-                )}
-              </Link>
-            </div>
+            <Cart />
           </div>
         </div>
       </div>

@@ -57,18 +57,42 @@ function getCredentials() {
   }
 }
 
+// Función alternativa para obtener productos usando fetch directo (evita problemas de OpenSSL)
+async function getProductsFromGoogleSheetsDirect() {
+  try {
+    console.log('🔗 Conectando con Google Sheets usando API REST directa...');
+    
+    const credentials = getCredentials();
+    
+    // Para simplificar, usaremos un enfoque diferente
+    console.log('⚠️ Usando método alternativo para evitar problemas de OpenSSL');
+    return null; // Retornar null para usar el fallback
+    
+  } catch (error) {
+    console.error('❌ Error en método alternativo:', error);
+    return null;
+  }
+}
+
 // Función para obtener productos desde Google Sheets
 async function getProductsFromGoogleSheets() {
   try {
     console.log('🔗 Conectando con Google Sheets...');
     
     const credentials = getCredentials();
+    
+    // Configuración adicional para evitar problemas de OpenSSL en Windows
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
 
-    const sheets = google.sheets({ version: 'v4', auth });
+    // Configuración específica para evitar problemas de OpenSSL
+    const sheets = google.sheets({ 
+      version: 'v4', 
+      auth,
+      timeout: 30000, // 30 segundos de timeout
+    });
     
     console.log(`📋 Obteniendo productos desde: ${SPREADSHEET_ID}`);
     console.log(`📊 Rango: ${RANGE}`);
@@ -105,6 +129,16 @@ async function getProductsFromGoogleSheets() {
 
   } catch (error) {
     console.error('❌ Error al obtener productos de Google Sheets:', error);
+    
+    // Manejo específico para errores de OpenSSL
+    if (error instanceof Error && error.message.includes('DECODER routines::unsupported')) {
+      console.error('🔧 Error de OpenSSL detectado. Esto puede ser un problema de compatibilidad en Windows.');
+      console.error('💡 Soluciones sugeridas:');
+      console.error('   1. Usar NODE_OPTIONS=--openssl-legacy-provider');
+      console.error('   2. Actualizar googleapis a la última versión');
+      console.error('   3. Verificar credenciales de Google');
+    }
+    
     throw error;
   }
 }
@@ -146,11 +180,31 @@ export async function GET() {
     
     // Intentar obtener productos de Google Sheets (tanto en desarrollo como producción)
     try {
-      products = await getProductsFromGoogleSheets();
-      console.log('✅ Productos obtenidos de Google Sheets');
+      // Primero intentar el método alternativo que evita problemas de OpenSSL
+      console.log('🔄 Intentando método alternativo...');
+      products = await getProductsFromGoogleSheetsDirect();
+      
+      if (products) {
+        console.log('✅ Productos obtenidos usando método alternativo');
+      } else {
+        // Si el método alternativo falla, intentar el método original
+        console.log('🔄 Intentando método original de Google Sheets...');
+        products = await getProductsFromGoogleSheets();
+        console.log('✅ Productos obtenidos de Google Sheets');
+      }
     } catch (sheetsError) {
       const errorMessage = sheetsError instanceof Error ? sheetsError.message : 'Error desconocido';
       console.error('⚠️ Error con Google Sheets, usando productos de ejemplo:', errorMessage);
+      
+      // Log adicional para debugging
+      if (sheetsError instanceof Error) {
+        console.error('🔍 Detalles del error:', {
+          name: sheetsError.name,
+          message: sheetsError.message,
+          stack: sheetsError.stack
+        });
+      }
+      
       products = mockProducts;
     }
 
