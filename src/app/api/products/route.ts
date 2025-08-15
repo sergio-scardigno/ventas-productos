@@ -7,19 +7,52 @@ import { join } from 'path';
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID || "19_iMYzqcG9_aoYeFIIKGAG8u9PI61Oh78vcnP5a-4Zc";
 const RANGE = 'Productos!A2:F'; // Asumiendo que tienes una hoja llamada "Productos"
 
-// Función para obtener credenciales desde archivo JSON
-function getCredentialsFromFile() {
+// Función para obtener credenciales (archivo JSON o variables de entorno)
+function getCredentials() {
   try {
-    const credentialsPath = join(process.cwd(), 'just-glow-468123-v4-7bb25d1d5bc2.json');
-    
-    if (!existsSync(credentialsPath)) {
-      throw new Error(`Archivo de credenciales no encontrado en: ${credentialsPath}`);
+    // Opción 1: Variables de entorno (para producción)
+    if (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+      console.log('🔑 Usando credenciales de variables de entorno');
+      
+      let privateKey = process.env.GOOGLE_PRIVATE_KEY;
+      
+      // Limpiar y formatear la clave privada
+      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+        privateKey = privateKey.slice(1, -1);
+      }
+      
+      // Reemplazar \n con saltos de línea reales
+      privateKey = privateKey.replace(/\\n/g, '\n');
+      
+      // Verificar que la clave tenga el formato correcto
+      if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+        throw new Error('Formato de clave privada inválido');
+      }
+      
+      return {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL,
+        private_key: privateKey,
+      };
     }
     
-    const credentials = JSON.parse(readFileSync(credentialsPath, 'utf8'));
-    return credentials;
+    // Opción 2: Archivo JSON (para desarrollo local)
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const credentialsPath = join(process.cwd(), 'just-glow-468123-v4-7bb25d1d5bc2.json');
+        
+        if (existsSync(credentialsPath)) {
+          const credentials = JSON.parse(readFileSync(credentialsPath, 'utf8'));
+          console.log('🔑 Usando credenciales del archivo JSON');
+          return credentials;
+        }
+      } catch (fileError) {
+        console.log('⚠️ No se pudo cargar archivo de credenciales:', fileError);
+      }
+    }
+    
+    throw new Error('No se encontraron credenciales de Google');
   } catch (error) {
-    console.error('❌ Error al cargar credenciales desde archivo:', error);
+    console.error('❌ Error al obtener credenciales:', error);
     throw error;
   }
 }
@@ -29,7 +62,7 @@ async function getProductsFromGoogleSheets() {
   try {
     console.log('🔗 Conectando con Google Sheets...');
     
-    const credentials = getCredentialsFromFile();
+    const credentials = getCredentials();
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
@@ -107,21 +140,17 @@ const mockProducts = [
 export async function GET() {
   try {
     console.log('🚀 Iniciando obtención de productos...');
+    console.log('🌍 Entorno:', process.env.NODE_ENV);
     
     let products;
     
-    // Intentar obtener productos de Google Sheets
-    if (process.env.NODE_ENV === 'development') {
-      try {
-        products = await getProductsFromGoogleSheets();
-        console.log('✅ Productos obtenidos de Google Sheets');
-      } catch (sheetsError) {
-        const errorMessage = sheetsError instanceof Error ? sheetsError.message : 'Error desconocido';
-        console.error('⚠️ Error con Google Sheets, usando productos de ejemplo:', errorMessage);
-        products = mockProducts;
-      }
-    } else {
-      console.log('⚠️ No es modo desarrollo, usando productos de ejemplo');
+    // Intentar obtener productos de Google Sheets (tanto en desarrollo como producción)
+    try {
+      products = await getProductsFromGoogleSheets();
+      console.log('✅ Productos obtenidos de Google Sheets');
+    } catch (sheetsError) {
+      const errorMessage = sheetsError instanceof Error ? sheetsError.message : 'Error desconocido';
+      console.error('⚠️ Error con Google Sheets, usando productos de ejemplo:', errorMessage);
       products = mockProducts;
     }
 
