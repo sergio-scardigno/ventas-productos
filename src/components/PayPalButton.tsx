@@ -80,7 +80,13 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
                  {
                    amount: {
                      value: (total / 100).toFixed(2), // Convertir centavos a dólares
-                     currency_code: 'USD'
+                     currency_code: 'USD',
+                     breakdown: {
+                       item_total: {
+                         value: (total / 100).toFixed(2), // Total de los items
+                         currency_code: 'USD'
+                       }
+                     }
                    },
                    description: `Compra de ${items.length} producto(s)`,
                    items: items.map((item) => ({
