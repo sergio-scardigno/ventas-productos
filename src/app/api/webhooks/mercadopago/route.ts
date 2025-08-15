@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveOrderToSheet } from '@/lib/googleSheets';
-import { sendPaymentConfirmationEmail } from '@/lib/emailService';
+import { sendPaymentConfirmationEmail, sendOrderNotificationEmail } from '@/lib/emailService';
 
 export async function POST(request: NextRequest) {
   try {
