@@ -207,9 +207,13 @@ async function processApprovedPayment(paymentDetails: Record<string, unknown>) {
     await saveOrderToSheet(orderData);
     console.log('💾 Orden guardada en Google Sheets');
 
-    // Enviar email de confirmación
+    // Enviar email de confirmación al cliente
     await sendPaymentConfirmationEmail(orderData);
-    console.log('📧 Email de confirmación enviado');
+    console.log('📧 Email de confirmación enviado al cliente');
+
+    // Enviar email de notificación al administrador
+    await sendOrderNotificationEmail(orderData);
+    console.log('📧 Email de notificación enviado al administrador');
 
   } catch (error) {
     console.error('❌ Error al procesar pago aprobado:', error);
