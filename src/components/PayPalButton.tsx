@@ -95,23 +95,35 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
             console.log('📊 Datos de la orden:', { total, items: items.length, currency: 'USD' });
             console.log('🔍 Items individuales:', items.map(item => ({ name: item.product.name, price: item.product.price, quantity: item.quantity })));
             
-            // Crear una orden más simple primero para probar
-            const simpleOrderData = {
+            // Logging completo del objeto actions
+            console.log('🔧 Objeto actions recibido:', actions);
+            console.log('🔧 actions.order:', actions.order);
+            console.log('🔧 actions.order.create:', actions.order?.create);
+            console.log('🔧 Tipo de actions.order.create:', typeof actions.order?.create);
+            
+            // Orden ultra-simplificada para pruebas
+            const testOrderData = {
               purchase_units: [
                 {
                   amount: {
-                    value: (total / 100).toFixed(2),
-                    currency_code: 'USD'
+                    value: "1.00", // Valor fijo de prueba
+                    currency_code: "USD"
                   },
-                  description: `Compra de ${items.length} producto(s)`
+                  description: "Test order"
                 }
               ]
             };
             
-            console.log('📋 Orden simple a enviar:', JSON.stringify(simpleOrderData, null, 2));
+            console.log('📋 Orden de prueba a enviar:', JSON.stringify(testOrderData, null, 2));
             console.log('🔧 Llamando a actions.order.create...');
             
-            const result = actions.order.create(simpleOrderData);
+            // Verificar que actions.order.create existe
+            if (!actions.order || typeof actions.order.create !== 'function') {
+              throw new Error('actions.order.create no es una función');
+            }
+            
+            console.log('🔧 actions.order.create es una función válida');
+            const result = actions.order.create(testOrderData);
             console.log('✅ actions.order.create llamado exitosamente');
             
             return result;
@@ -129,21 +141,46 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
         onApprove: async (data: PayPalOrder, actions: PayPalActions) => {
           try {
             console.log('🎯 onApprove llamado con datos:', data);
+            console.log('🔍 Tipo de data:', typeof data);
+            console.log('🔍 Data es null/undefined:', data === null || data === undefined);
+            console.log('🔍 Data es objeto:', typeof data === 'object');
+            console.log('🔍 Propiedades de data:', Object.keys(data || {}));
+            console.log('🔍 Data completo (JSON):', JSON.stringify(data, null, 2));
+            
             setIsLoading(true);
             setError(null);
             
-            // Verificar que tenemos un ID de orden válido
+            // Verificar que tenemos datos de orden válidos
             if (!data) {
               console.error('❌ Datos de orden vacíos:', data);
               throw new Error('Datos de orden vacíos');
             }
             
-            if (!data.id) {
-              console.error('❌ ID de orden faltante:', data);
-              throw new Error('ID de orden faltante');
+            // Buscar el ID de orden en diferentes propiedades posibles
+            let orderId = null;
+            if (data.id) {
+              orderId = data.id;
+            } else if (data.orderID) {
+              orderId = data.orderID;
+            } else if (data.order_id) {
+              orderId = data.order_id;
+            } else if (data.paymentID) {
+              orderId = data.paymentID;
             }
             
-            console.log('💰 Capturando orden de PayPal:', data.id);
+            console.log('🔍 ID de orden encontrado:', orderId);
+            
+            if (!orderId) {
+              console.error('❌ ID de orden no encontrado en ninguna propiedad:', {
+                id: data.id,
+                orderID: data.orderID,
+                order_id: data.order_id,
+                paymentID: data.paymentID
+              });
+              throw new Error('ID de orden no encontrado');
+            }
+            
+            console.log('💰 Capturando orden de PayPal:', orderId);
             console.log('📋 Datos completos de la orden:', JSON.stringify(data, null, 2));
             
             // Agregar un pequeño delay para evitar problemas de timing
@@ -151,14 +188,19 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             console.log('🔍 Iniciando captura de orden...');
+            console.log('🔧 Actions en onApprove:', actions);
+            console.log('🔧 actions.order:', actions.order);
+            console.log('🔧 actions.order.capture:', actions.order?.capture);
+            console.log('🔧 Tipo de actions.order.capture:', typeof actions.order?.capture);
+            
             const order = await actions.order.capture();
             console.log('✅ Orden capturada:', order);
             
             if (order && order.status === 'COMPLETED') {
               console.log('🎉 Pago completado exitosamente');
-              const orderId = order.id || data.id;
-              console.log('🆔 ID de orden final:', orderId);
-              onSuccess(orderId);
+              const finalOrderId = order.id || orderId;
+              console.log('🆔 ID de orden final:', finalOrderId);
+              onSuccess(finalOrderId);
             } else {
               console.error('❌ Estado de orden inesperado:', order?.status);
               const errorMsg = `Estado de orden inesperado: ${order?.status || 'desconocido'}`;
