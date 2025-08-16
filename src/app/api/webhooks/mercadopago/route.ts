@@ -199,6 +199,7 @@ async function processApprovedPayment(paymentDetails: Record<string, unknown>) {
       payment_status: 'completed',
       payment_date: (paymentDetails.date_approved as string) || new Date().toISOString(),
       total_items: (paymentDetails.items as Array<Record<string, unknown>>)?.length || 1,
+      payment_source: 'mercadopago', // Identificar que viene de Mercado Pago
     };
 
     console.log('📊 Datos de orden preparados:', orderData);

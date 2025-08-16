@@ -14,6 +14,7 @@ interface OrderData {
   payment_status: string;
   payment_date: string;
   total_items: number;
+  payment_source: string; // Nueva columna: 'paypal' o 'mercadopago'
 }
 
 interface ProductData {

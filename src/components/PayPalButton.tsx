@@ -3,6 +3,54 @@
 import { useEffect, useRef, useState } from 'react';
 import { CartItem } from '@/types';
 
+// Función para guardar orden de PayPal en Google Sheets
+async function savePayPalOrderToSheet(order: any, items: CartItem[], total: number) {
+  try {
+    console.log('💾 Guardando orden de PayPal en Google Sheets...');
+    
+    const orderData = {
+      payment_id: order.id || 'paypal-' + Date.now(),
+      external_reference: order.id || 'paypal-' + Date.now(),
+      payer_email: 'paypal@example.com', // PayPal no proporciona email del pagador en el SDK
+      payer_name: 'Cliente PayPal',
+      amount: total,
+      currency: 'USD',
+      payment_method: 'PayPal',
+      installments: 1,
+      status: order.status || 'COMPLETED',
+      created_at: new Date().toISOString(),
+      approved_at: new Date().toISOString(),
+      items: items.map(item => item.product.name).join(', '),
+      payment_status: 'completed',
+      payment_date: new Date().toISOString(),
+      total_items: items.length,
+      payment_source: 'paypal', // Identificar que viene de PayPal
+    };
+
+    console.log('📊 Datos de orden PayPal preparados:', orderData);
+
+    // Llamar a la API para guardar en Google Sheets
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/save-order`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al guardar orden de PayPal');
+    }
+
+    console.log('✅ Orden de PayPal guardada exitosamente en Google Sheets');
+  } catch (error) {
+    console.error('❌ Error al guardar orden de PayPal en Google Sheets:', error);
+    // No lanzar error aquí para no interrumpir el flujo de pago
+  }
+}
+
 interface PayPalButtonProps {
   items: CartItem[];
   total: number;
@@ -216,16 +264,28 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
                 error: captureError
               });
               
-              // Si es un error de ventana cerrada, intentar usar el orderID como respaldo
-              if (captureError instanceof Error && 
-                  (captureError.message.includes('Window closed') || 
-                   captureError.message.includes('postrobot_method') || 
-                   captureError.message.includes('Target window is closed'))) {
-                console.log('🔄 Ventana cerrada detectada, usando orderID como respaldo...');
-                console.log('🆔 Usando orderID como ID de orden final:', orderId);
-                onSuccess(orderId);
-                return; // Salir exitosamente
-              }
+                             // Si es un error de ventana cerrada, intentar usar el orderID como respaldo
+               if (captureError instanceof Error && 
+                   (captureError.message.includes('Window closed') || 
+                    captureError.message.includes('postrobot_method') || 
+                    captureError.message.includes('Target window is closed'))) {
+                 console.log('🔄 Ventana cerrada detectada, usando orderID como respaldo...');
+                 console.log('🆔 Usando orderID como ID de orden final:', orderId);
+                 
+                 // Crear objeto de orden mínimo para guardar en Google Sheets
+                 const fallbackOrder = {
+                   id: orderId,
+                   status: 'COMPLETED',
+                   items: items,
+                   total: total
+                 };
+                 
+                 // Guardar orden en Google Sheets
+                 await savePayPalOrderToSheet(fallbackOrder, items, total);
+                 
+                 onSuccess(orderId);
+                 return; // Salir exitosamente
+               }
               
               throw captureError;
             }
@@ -234,6 +294,10 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
               console.log('🎉 Pago completado exitosamente');
               const finalOrderId = order.id || orderId;
               console.log('🆔 ID de orden final:', finalOrderId);
+              
+              // Guardar orden en Google Sheets
+              await savePayPalOrderToSheet(order, items, total);
+              
               onSuccess(finalOrderId);
             } else if (captureSuccessful) {
               console.error('❌ Estado de orden inesperado:', order?.status);

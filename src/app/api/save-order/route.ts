@@ -17,6 +17,7 @@ interface OrderData {
   payment_status: string;
   payment_date: string;
   total_items: number;
+  payment_source: string; // Nueva columna: 'paypal' o 'mercadopago'
 }
 
 export async function POST(request: NextRequest) {
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
       orderData.payment_status,
       orderData.payment_date,
       orderData.total_items,
+      orderData.payment_source, // Nueva columna: fuente del pago
       new Date().toISOString(), // timestamp de cuando se guardó
     ];
 
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
     // Agregar fila al final de la hoja de órdenes
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: 'Orders!A:P', // Asumiendo que tienes una hoja llamada "Orders"
+      range: 'Orders!A:Q', // Actualizado para incluir la nueva columna payment_source
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       requestBody: {
