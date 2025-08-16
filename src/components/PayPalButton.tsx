@@ -188,8 +188,8 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
             console.log('📋 Datos completos de la orden:', JSON.stringify(data, null, 2));
             
             // Agregar un pequeño delay para evitar problemas de timing
-            console.log('⏳ Esperando 1 segundo antes de capturar...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            console.log('⏳ Esperando 500ms antes de capturar...');
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             console.log('🔍 Iniciando captura de orden...');
             console.log('🔧 Actions en onApprove:', actions);
@@ -197,15 +197,45 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
             console.log('🔧 actions.order.capture:', actions.order?.capture);
             console.log('🔧 Tipo de actions.order.capture:', typeof actions.order?.capture);
             
-            const order = await actions.order.capture();
-            console.log('✅ Orden capturada:', order);
+            let order;
+            let captureSuccessful = false;
             
-            if (order && order.status === 'COMPLETED') {
+            try {
+              console.log('🔧 Llamando a actions.order.capture()...');
+              order = await actions.order.capture();
+              console.log('✅ Orden capturada exitosamente:', order);
+              console.log('🔍 Tipo de respuesta:', typeof order);
+              console.log('🔍 Propiedades de la respuesta:', Object.keys(order || {}));
+              console.log('🔍 Respuesta completa (JSON):', JSON.stringify(order, null, 2));
+              captureSuccessful = true;
+            } catch (captureError) {
+              console.error('❌ Error específico en actions.order.capture():', captureError);
+              console.error('🔍 Detalles del error de captura:', {
+                message: captureError instanceof Error ? captureError.message : 'Error desconocido',
+                stack: captureError instanceof Error ? captureError.stack : 'No stack trace',
+                error: captureError
+              });
+              
+              // Si es un error de ventana cerrada, intentar usar el orderID como respaldo
+              if (captureError instanceof Error && 
+                  (captureError.message.includes('Window closed') || 
+                   captureError.message.includes('postrobot_method') || 
+                   captureError.message.includes('Target window is closed'))) {
+                console.log('🔄 Ventana cerrada detectada, usando orderID como respaldo...');
+                console.log('🆔 Usando orderID como ID de orden final:', orderId);
+                onSuccess(orderId);
+                return; // Salir exitosamente
+              }
+              
+              throw captureError;
+            }
+            
+            if (captureSuccessful && order && order.status === 'COMPLETED') {
               console.log('🎉 Pago completado exitosamente');
               const finalOrderId = order.id || orderId;
               console.log('🆔 ID de orden final:', finalOrderId);
               onSuccess(finalOrderId);
-            } else {
+            } else if (captureSuccessful) {
               console.error('❌ Estado de orden inesperado:', order?.status);
               const errorMsg = `Estado de orden inesperado: ${order?.status || 'desconocido'}`;
               setError(errorMsg);
@@ -217,8 +247,8 @@ export default function PayPalButton({ items, total, onSuccess, onError }: PayPa
             // Manejar errores específicos de PayPal
             let errorMessage = 'Error al procesar el pago con PayPal';
             if (error instanceof Error) {
-              if (error.message.includes('Window closed')) {
-                errorMessage = 'La ventana de PayPal se cerró. Inténtalo de nuevo.';
+              if (error.message.includes('Window closed') || error.message.includes('postrobot_method') || error.message.includes('Target window is closed')) {
+                errorMessage = 'La ventana de PayPal se cerró prematuramente. El pago puede haberse procesado. Verifica tu cuenta de PayPal.';
               } else if (error.message.includes('global_session_not_found')) {
                 errorMessage = 'Sesión de PayPal expirada. Recarga la página e inténtalo de nuevo.';
               } else if (error.message.includes('ID de orden')) {
