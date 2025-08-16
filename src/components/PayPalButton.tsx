@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CartItem } from '@/types';
 
 // Función para guardar orden de PayPal en Google Sheets
-async function savePayPalOrderToSheet(order: any, items: CartItem[], total: number) {
+async function savePayPalOrderToSheet(order: PayPalOrder, items: CartItem[], total: number) {
   try {
     console.log('💾 Guardando orden de PayPal en Google Sheets...');
     
