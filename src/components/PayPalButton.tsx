@@ -11,8 +11,12 @@ interface PayPalButtonProps {
 }
 
 interface PayPalOrder {
-  id: string;
-  status: string;
+  id?: string;
+  orderID?: string;
+  order_id?: string;
+  paymentID?: string;
+  status?: string;
+  [key: string]: unknown; // Permitir propiedades adicionales
 }
 
 interface PayPalActions {
