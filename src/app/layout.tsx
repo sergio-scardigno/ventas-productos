@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import ChatwootClient from "@/components/ChatwootClient";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -27,6 +28,7 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans`}>
         {children}
+        <ChatwootClient />
       </body>
     </html>
   );

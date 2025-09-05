@@ -69,15 +69,15 @@ export default function ProductCard({ product }: ProductCardProps) {
               <button
                 onClick={() => handleQuantityChange(quantity - 1)}
                 disabled={quantity <= 1}
-                className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1 rounded-full bg-gray-700 hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Minus className="w-4 h-4" />
               </button>
-              <span className="w-8 text-center font-medium">{quantity}</span>
+              <span className="w-8 text-center font-medium text-gray-900">{quantity}</span>
               <button
                 onClick={() => handleQuantityChange(quantity + 1)}
                 disabled={quantity >= product.stock}
-                className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1 rounded-full bg-gray-700 hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-4 h-4" />
               </button>

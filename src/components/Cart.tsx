@@ -145,20 +145,22 @@ export default function Cart() {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                          className="p-1 rounded-full bg-gray-100 hover:bg-gray-200"
+                          className="p-1 rounded-full bg-gray-700 hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={item.quantity <= 1}
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-8 text-center text-sm">{item.quantity}</span>
+                        <span className="w-8 text-center text-sm font-medium text-gray-900">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                          className="p-1 rounded-full bg-gray-100 hover:bg-gray-200"
+                          className="p-1 rounded-full bg-gray-700 hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={item.quantity >= item.product.stock}
                         >
                           <Plus className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => removeItem(item.product.id)}
-                          className="p-1 rounded-full bg-red-100 hover:bg-red-200 text-red-600"
+                          className="p-1 rounded-full bg-red-600 hover:bg-red-700 text-white"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
